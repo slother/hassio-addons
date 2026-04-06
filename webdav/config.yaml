@@ -1,7 +1,7 @@
 name: WebDAV
 description: WebDAV server based on rclone with SSL/TLS support
 url: https://github.com/slother/hassio-addons/tree/main/webdav
-version: 1.1.1
+version: 0.0.1
 stage: stable
 slug: webdav
 image: ghcr.io/slother/{arch}-addon-webdav
