@@ -1,0 +1,32 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start rclone WebDAV service
+# ==============================================================================
+
+declare -a args=()
+declare document_root
+
+document_root=$(bashio::config "document_root")
+export RCLONE_DOCUMENT_ROOT="${document_root}"
+
+args+=(serve webdav)
+args+=(--addr :8080)
+args+=(--auth-proxy /etc/rclone/auth-proxy.sh)
+
+if bashio::config.true 'metrics'; then
+  args+=(--rc)
+  args+=(--rc-addr :5572)
+  args+=(--rc-enable-metrics)
+  args+=(--rc-no-auth)
+fi
+
+if bashio::config.true 'ssl'; then
+  certfile=$(bashio::config "certfile")
+  keyfile=$(bashio::config "keyfile")
+  args+=(--cert "/ssl/${certfile}")
+  args+=(--key "/ssl/${keyfile}")
+fi
+
+bashio::log.info "Starting rclone WebDAV server ..."
+bashio::log.info "rclone ${args[*]}"
+exec rclone "${args[@]}"
