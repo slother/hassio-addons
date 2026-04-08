@@ -28,6 +28,18 @@ readonly SCRAPE_INTERVAL=$(bashio::config 'scrape_interval')
 HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
 bashio::log.info "Host hostname: ${HA_HOSTNAME}"
 
+# --- Docker discovery (shared by metrics and logs) ---
+DOCKER_BLOCK=""
+if bashio::var.has_value "${PROM_URL}" || bashio::var.has_value "${LOKI_URL}"; then
+    DOCKER_BLOCK="
+// ---------------------------------------------------------------------------
+// Docker container discovery (shared)
+// ---------------------------------------------------------------------------
+discovery.docker \"containers\" {
+  host = \"unix:///run/docker.sock\"
+}"
+fi
+
 # --- Build Prometheus blocks ---
 PROM_BLOCK=""
 if bashio::var.has_value "${PROM_URL}"; then
@@ -69,6 +81,20 @@ prometheus.scrape \"homeassistant\" {
   bearer_token = sys.env(\"SUPERVISOR_TOKEN\")
 
   forward_to = [prometheus.remote_write.default.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// Docker container metrics (CPU, memory, network, disk per container)
+// ---------------------------------------------------------------------------
+prometheus.exporter.cadvisor \"containers\" {
+  docker_host = \"unix:///run/docker.sock\"
+  store_container_labels = false
+}
+
+prometheus.scrape \"cadvisor\" {
+  targets         = prometheus.exporter.cadvisor.containers.targets
+  scrape_interval = \"${SCRAPE_INTERVAL}\"
+  forward_to      = [prometheus.remote_write.default.receiver]
 }
 
 // ---------------------------------------------------------------------------
@@ -139,10 +165,6 @@ loki.source.journal \"read\" {
 // ---------------------------------------------------------------------------
 // Docker container log collection
 // ---------------------------------------------------------------------------
-discovery.docker \"containers\" {
-  host = \"unix:///run/docker.sock\"
-}
-
 loki.source.docker \"containers\" {
   host       = \"unix:///run/docker.sock\"
   targets    = discovery.docker.containers.targets
@@ -176,6 +198,7 @@ cat > "${CONFIG_FILE}" << EOF
 logging {
   level = "${LOG_LEVEL}"
 }
+${DOCKER_BLOCK}
 ${PROM_BLOCK}
 ${LOKI_BLOCK}
 EOF
