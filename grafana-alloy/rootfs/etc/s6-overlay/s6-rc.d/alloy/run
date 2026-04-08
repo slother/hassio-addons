@@ -11,5 +11,10 @@ args+=(/etc/alloy/config.alloy)
 args+=(--server.http.listen-addr=0.0.0.0:12345)
 args+=(--storage.path=/data/alloy)
 
+# Export API key so Alloy can read it via sys.env()
+if bashio::config.has_value 'gcloud_api_key'; then
+    export GCLOUD_API_KEY=$(bashio::config 'gcloud_api_key')
+fi
+
 bashio::log.info "Starting Grafana Alloy..."
 exec alloy "${args[@]}"
