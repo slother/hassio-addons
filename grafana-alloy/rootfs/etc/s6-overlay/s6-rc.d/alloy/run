@@ -11,6 +11,10 @@ args+=(/etc/alloy/config.alloy)
 args+=(--server.http.listen-addr=0.0.0.0:12345)
 args+=(--storage.path=/data/alloy)
 
+# Set cluster node name to real hostname
+HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
+args+=(--cluster.name="${HA_HOSTNAME}")
+
 # Export API key so Alloy can read it via sys.env()
 if bashio::config.has_value 'gcloud_api_key'; then
     export GCLOUD_API_KEY=$(bashio::config 'gcloud_api_key')
