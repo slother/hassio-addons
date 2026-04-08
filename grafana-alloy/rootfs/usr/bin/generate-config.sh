@@ -24,6 +24,10 @@ readonly LOKI_URL=$(bashio::config 'loki_url')
 readonly LOKI_USERNAME=$(bashio::config 'loki_username')
 readonly SCRAPE_INTERVAL=$(bashio::config 'scrape_interval')
 
+# Get real hostname from Supervisor API
+HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
+bashio::log.info "Host hostname: ${HA_HOSTNAME}"
+
 # --- Build Prometheus blocks ---
 PROM_BLOCK=""
 if bashio::var.has_value "${PROM_URL}"; then
@@ -81,6 +85,9 @@ prometheus.scrape \"alloy\" {
 // Remote write to Grafana Cloud / Prometheus
 // ---------------------------------------------------------------------------
 prometheus.remote_write \"default\" {
+  external_labels = {
+    instance = \"${HA_HOSTNAME}\",
+  }
   endpoint {
     url = \"${PROM_URL}\"${PROM_AUTH}
   }
@@ -147,6 +154,9 @@ loki.source.docker \"containers\" {
 // Loki remote write to Grafana Cloud
 // ---------------------------------------------------------------------------
 loki.write \"default\" {
+  external_labels = {
+    instance = \"${HA_HOSTNAME}\",
+  }
   endpoint {
     url = \"${LOKI_URL}\"${LOKI_AUTH}
   }
