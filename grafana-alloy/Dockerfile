@@ -1,13 +1,9 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base/amd64:9.1.0
-FROM ${BUILD_FROM}
+ARG BUILD_ARCH=amd64
 
+# Download Alloy binary on native amd64 (avoids QEMU issues on cross-build)
+FROM --platform=linux/amd64 debian:bookworm-slim AS downloader
 ARG BUILD_ARCH
-
-# Install Grafana Alloy
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        unzip \
-        curl \
+RUN apt-get update && apt-get install -y --no-install-recommends curl unzip \
     && rm -rf /var/lib/apt/lists/* \
     && ALLOY_VERSION="1.15.0" \
     && ARCH="${BUILD_ARCH}" \
@@ -16,15 +12,19 @@ RUN apt-get update \
         "https://github.com/grafana/alloy/releases/download/v${ALLOY_VERSION}/alloy-linux-${ARCH}.zip" \
     && cd /tmp \
     && unzip alloy.zip \
-    && mv alloy-linux-${ARCH} /usr/local/bin/alloy \
-    && chmod +x /usr/local/bin/alloy \
-    && rm -rf /tmp/alloy* \
-    && apt-get purge -y unzip \
-    && apt-get autoremove -y
+    && mv alloy-linux-${ARCH} /alloy \
+    && chmod +x /alloy
+
+# Final image
+ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base/amd64:9.1.0
+FROM ${BUILD_FROM}
+
+COPY --from=downloader /alloy /usr/local/bin/alloy
 
 # Copy root filesystem
 COPY rootfs /
 
+ARG BUILD_ARCH
 ARG BUILD_DATE
 ARG BUILD_DESCRIPTION
 ARG BUILD_NAME
