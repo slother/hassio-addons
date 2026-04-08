@@ -131,19 +131,6 @@ loki.source.journal \"read\" {
 }
 
 // ---------------------------------------------------------------------------
-// Docker container log collection
-// ---------------------------------------------------------------------------
-discovery.docker \"containers\" {
-  host = \"unix:///var/run/docker.sock\"
-}
-
-loki.source.docker \"containers\" {
-  host       = \"unix:///var/run/docker.sock\"
-  targets    = discovery.docker.containers.targets
-  forward_to = [loki.write.default.receiver]
-}
-
-// ---------------------------------------------------------------------------
 // Loki remote write to Grafana Cloud
 // ---------------------------------------------------------------------------
 loki.write \"default\" {
