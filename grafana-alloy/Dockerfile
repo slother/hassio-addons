@@ -4,7 +4,7 @@ ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base/amd64:9.1.0
 # Download Alloy binary on native amd64 (avoids QEMU issues on cross-build)
 FROM --platform=linux/amd64 debian:bookworm-slim AS downloader
 ARG BUILD_ARCH
-RUN apt-get update && apt-get install -y --no-install-recommends curl unzip \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl unzip \
     && rm -rf /var/lib/apt/lists/* \
     && ALLOY_VERSION="1.15.0" \
     && ARCH="${BUILD_ARCH}" \
