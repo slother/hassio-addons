@@ -134,7 +134,6 @@ loki.source.journal \"read\" {
   forward_to    = [loki.write.default.receiver]
   relabel_rules = loki.relabel.journal.rules
   labels        = {component = \"loki.source.journal\"}
-  path          = \"/var/log/journal\"
 }
 
 // ---------------------------------------------------------------------------
