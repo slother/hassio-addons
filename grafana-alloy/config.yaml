@@ -1,6 +1,6 @@
 ---
 name: Grafana Alloy
-version: 0.3.1
+version: 1.0.0
 slug: grafana-alloy
 description: >-
   Grafana Alloy telemetry collector for Home Assistant. Scrapes HA Prometheus
