@@ -1,0 +1,175 @@
+name: Auto release grafana-alloy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "grafana-alloy/**"
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: addon-grafana-alloy
+  ADDON_DIR: grafana-alloy
+  TAG_PREFIX: alloy-v
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  release:
+    name: Bump version and release
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'chore: bump grafana-alloy')"
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      bumped: ${{ steps.bump.outputs.bump }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest tag
+        id: latest_tag
+        run: |
+          tag=$(git tag -l "${{ env.TAG_PREFIX }}*" --sort=-v:refname | head -1)
+          tag=${tag:-"${{ env.TAG_PREFIX }}0.0.0"}
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Latest tag: ${tag}"
+
+      - name: Determine bump type from commits
+        id: bump
+        run: |
+          latest_tag="${{ steps.latest_tag.outputs.tag }}"
+
+          if git rev-parse "${latest_tag}" >/dev/null 2>&1; then
+            commits=$(git log "${latest_tag}..HEAD" --oneline -- ${{ env.ADDON_DIR }}/)
+          else
+            commits=$(git log --oneline -- ${{ env.ADDON_DIR }}/)
+          fi
+
+          echo "Commits since ${latest_tag}:"
+          echo "${commits}"
+
+          if [ -z "${commits}" ]; then
+            echo "bump=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if echo "${commits}" | grep -qiE '(^[a-f0-9]+ \w+!:|BREAKING CHANGE)'; then
+            echo "bump=major" >> "$GITHUB_OUTPUT"
+          elif echo "${commits}" | grep -qiE '^[a-f0-9]+ feat'; then
+            echo "bump=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "bump=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version
+        if: steps.bump.outputs.bump != 'none'
+        id: version
+        run: |
+          current="${{ steps.latest_tag.outputs.tag }}"
+          current="${current#${{ env.TAG_PREFIX }}}"
+
+          IFS='.' read -r major minor patch <<< "${current}"
+
+          case "${{ steps.bump.outputs.bump }}" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+
+          new_version="${major}.${minor}.${patch}"
+          echo "version=${new_version}" >> "$GITHUB_OUTPUT"
+          echo "Bumping ${current} -> ${new_version} (${{ steps.bump.outputs.bump }})"
+
+      - name: Create tag and release
+        if: steps.bump.outputs.bump != 'none'
+        run: |
+          version="${{ steps.version.outputs.version }}"
+
+          # Update config.yaml version
+          sed -i "s/^version: .*/version: ${version}/" ${{ env.ADDON_DIR }}/config.yaml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ${{ env.ADDON_DIR }}/config.yaml
+          git commit -m "chore: bump grafana-alloy version to ${version}"
+
+          git push origin main
+          git tag "${{ env.TAG_PREFIX }}${version}"
+          git push origin "${{ env.TAG_PREFIX }}${version}"
+
+          gh release create "${{ env.TAG_PREFIX }}${version}" \
+            --title "Grafana Alloy ${version}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  init:
+    name: Initialize build
+    needs: release
+    if: needs.release.outputs.bumped != 'none'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      version: ${{ needs.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.03.2
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: [release, init]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: "${{ env.TAG_PREFIX }}${{ needs.release.outputs.version }}"
+
+      - name: Build and push image
+        uses: home-assistant/builder/actions/build-image@2026.03.2
+        with:
+          context: ${{ env.ADDON_DIR }}
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.release.outputs.version }}
+            latest
+          push: "true"
+          version: ${{ needs.release.outputs.version }}
+
+  manifest:
+    name: Publish multi-arch manifest
+    needs: [release, init, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.03.2
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ needs.release.outputs.version }}
+            latest

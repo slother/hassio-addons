@@ -1,0 +1,15 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Start Grafana Alloy
+# ==============================================================================
+
+declare -a args=()
+
+args+=(run)
+args+=(/etc/alloy/config.alloy)
+args+=(--server.http.listen-addr=0.0.0.0:12345)
+args+=(--storage.path=/data/alloy)
+
+bashio::log.info "Starting Grafana Alloy..."
+exec alloy "${args[@]}"
