@@ -15,7 +15,6 @@ startup: services
 boot: auto
 host_network: true
 docker_api: true
-host_pid: true
 journald: true
 apparmor: false
 hassio_api: true
