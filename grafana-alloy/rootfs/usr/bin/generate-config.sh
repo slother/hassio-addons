@@ -20,25 +20,11 @@ bashio::log.info "Generating Alloy configuration from addon options..."
 
 readonly PROM_URL=$(bashio::config 'prometheus_url')
 readonly PROM_USERNAME=$(bashio::config 'prometheus_username')
-readonly LOKI_URL=$(bashio::config 'loki_url')
-readonly LOKI_USERNAME=$(bashio::config 'loki_username')
 readonly SCRAPE_INTERVAL=$(bashio::config 'scrape_interval')
 
 # Get real hostname from Supervisor API
 HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
 bashio::log.info "Host hostname: ${HA_HOSTNAME}"
-
-# --- Docker discovery (shared by metrics and logs) ---
-DOCKER_BLOCK=""
-if bashio::var.has_value "${PROM_URL}" || bashio::var.has_value "${LOKI_URL}"; then
-    DOCKER_BLOCK="
-// ---------------------------------------------------------------------------
-// Docker container discovery (shared)
-// ---------------------------------------------------------------------------
-discovery.docker \"containers\" {
-  host = \"unix:///run/docker.sock\"
-}"
-fi
 
 # --- Build Prometheus blocks ---
 PROM_BLOCK=""
@@ -84,20 +70,6 @@ prometheus.scrape \"homeassistant\" {
 }
 
 // ---------------------------------------------------------------------------
-// Docker container metrics (CPU, memory, network, disk per container)
-// ---------------------------------------------------------------------------
-prometheus.exporter.cadvisor \"containers\" {
-  docker_host = \"unix:///run/docker.sock\"
-  store_container_labels = false
-}
-
-prometheus.scrape \"cadvisor\" {
-  targets         = prometheus.exporter.cadvisor.containers.targets
-  scrape_interval = \"${SCRAPE_INTERVAL}\"
-  forward_to      = [prometheus.remote_write.default.receiver]
-}
-
-// ---------------------------------------------------------------------------
 // Alloy self-monitoring
 // ---------------------------------------------------------------------------
 prometheus.exporter.self \"alloy\" {}
@@ -120,75 +92,10 @@ prometheus.remote_write \"default\" {
 }"
 fi
 
-# --- Build Loki block ---
-LOKI_BLOCK=""
-if bashio::var.has_value "${LOKI_URL}"; then
-    LOKI_AUTH=""
-    if bashio::var.has_value "${LOKI_USERNAME}"; then
-        LOKI_AUTH="
-    basic_auth {
-      username = \"${LOKI_USERNAME}\"
-      password = sys.env(\"GCLOUD_API_KEY\")
-    }"
-    fi
-
-    LOKI_BLOCK="
-// ---------------------------------------------------------------------------
-// Journal log collection
-// ---------------------------------------------------------------------------
-loki.relabel \"journal\" {
-  forward_to = []
-  rule {
-    source_labels = [\"__journal__systemd_unit\"]
-    target_label  = \"unit\"
-  }
-  rule {
-    source_labels = [\"__journal__hostname\"]
-    target_label  = \"nodename\"
-  }
-  rule {
-    source_labels = [\"__journal_syslog_identifier\"]
-    target_label  = \"syslog_identifier\"
-  }
-  rule {
-    source_labels = [\"__journal_container_name\"]
-    target_label  = \"container_name\"
-  }
-}
-
-loki.source.journal \"read\" {
-  forward_to    = [loki.write.default.receiver]
-  relabel_rules = loki.relabel.journal.rules
-  labels        = {component = \"loki.source.journal\"}
-}
-
-// ---------------------------------------------------------------------------
-// Docker container log collection
-// ---------------------------------------------------------------------------
-loki.source.docker \"containers\" {
-  host       = \"unix:///run/docker.sock\"
-  targets    = discovery.docker.containers.targets
-  forward_to = [loki.write.default.receiver]
-}
-
-// ---------------------------------------------------------------------------
-// Loki remote write to Grafana Cloud
-// ---------------------------------------------------------------------------
-loki.write \"default\" {
-  external_labels = {
-    instance = \"${HA_HOSTNAME}\",
-  }
-  endpoint {
-    url = \"${LOKI_URL}\"${LOKI_AUTH}
-  }
-}"
-fi
-
-# --- Check at least one endpoint is configured ---
-if ! bashio::var.has_value "${PROM_URL}" \
-    && ! bashio::var.has_value "${LOKI_URL}"; then
+# --- Check endpoint is configured ---
+if ! bashio::var.has_value "${PROM_URL}"; then
     bashio::log.warning \
-        "No endpoints configured. Alloy will start but won't send data anywhere."
+        "No Prometheus URL configured. Alloy will start but won't send data anywhere."
 fi
 
 cat > "${CONFIG_FILE}" << EOF
@@ -198,9 +105,7 @@ cat > "${CONFIG_FILE}" << EOF
 logging {
   level = "${LOG_LEVEL}"
 }
-${DOCKER_BLOCK}
 ${PROM_BLOCK}
-${LOKI_BLOCK}
 EOF
 
 bashio::log.info "Configuration generated successfully"

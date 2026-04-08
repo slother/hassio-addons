@@ -7,8 +7,7 @@ telemetry collector inside Home Assistant OS. It automatically:
 
 - Scrapes **Home Assistant Prometheus metrics** via the Supervisor API
 - Collects **node/system metrics** (CPU, memory, disk, filesystem, network)
-- Collects **systemd journal logs** and **Docker container logs**
-- Pushes everything to **Grafana Cloud** (or any Prometheus/Loki endpoint)
+- Pushes everything to **Grafana Cloud** or any Prometheus remote_write endpoint
 
 ## Prerequisites
 
@@ -17,41 +16,37 @@ telemetry collector inside Home Assistant OS. It automatically:
    ```yaml
    prometheus:
    ```
-2. A **Grafana Cloud** account (free tier works) with Prometheus and Loki
-   endpoints.
+2. A **Grafana Cloud** account (free tier works) or any Prometheus endpoint
+   that accepts remote_write.
 
 ## Configuration
 
-### Required options
+### Options
 
-| Option               | Description                                      |
-|----------------------|--------------------------------------------------|
-| `prometheus_url`     | Grafana Cloud Prometheus remote_write URL         |
-| `prometheus_username`| Grafana Cloud Prometheus username (numeric ID)    |
-| `loki_url`           | Grafana Cloud Loki push URL                       |
-| `loki_username`      | Grafana Cloud Loki username (numeric ID)          |
-| `gcloud_api_key`     | Grafana Cloud API key (used for both endpoints)   |
+| Option               | Default | Description                                       |
+|----------------------|---------|---------------------------------------------------|
+| `prometheus_url`     | (empty) | Prometheus remote_write URL                       |
+| `prometheus_username`| (empty) | Username (numeric ID for Grafana Cloud)            |
+| `gcloud_api_key`     | (empty) | API key (used as basic_auth password)              |
+| `log_level`          | `info`  | Alloy log level                                   |
+| `scrape_interval`    | `60s`   | How often to scrape metrics                       |
+| `custom_config_path` | (empty) | Path to custom Alloy config in `/config/`         |
 
-### Optional options
-
-| Option              | Default | Description                               |
-|---------------------|---------|-------------------------------------------|
-| `log_level`         | `info`  | Alloy log level                           |
-| `scrape_interval`   | `60s`   | How often to scrape metrics               |
-| `custom_config_path`| (empty) | Path to custom Alloy config in `/config/` |
-
-### Finding your Grafana Cloud credentials
+### Grafana Cloud setup
 
 1. Go to **grafana.com** → **My Account** → your stack
 2. Under **Prometheus**, copy the **Remote Write Endpoint** and **Username**
-3. Under **Loki**, copy the **Push URL** and **Username**
-4. Create an API key with **MetricsPublisher** and **LogsPublisher** roles
+3. Create an API key with **MetricsPublisher** role
+
+### Self-hosted Prometheus
+
+Set only `prometheus_url` (e.g., `http://prometheus:9090/api/v1/write`).
+Leave `prometheus_username` and `gcloud_api_key` empty for no auth.
 
 ## Custom configuration
 
-If you need full control over the Alloy config, create a `.alloy` file in
-your Home Assistant `/config/` directory and set `custom_config_path` to the
-filename (e.g., `alloy/my-config.alloy`).
+Create a `.alloy` file in your Home Assistant `/config/` directory and set
+`custom_config_path` to the filename (e.g., `alloy/my-config.alloy`).
 
 ## Web UI
 
