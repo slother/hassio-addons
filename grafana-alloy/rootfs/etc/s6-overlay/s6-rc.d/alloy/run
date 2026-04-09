@@ -13,7 +13,7 @@ args+=(--storage.path=/data/alloy)
 args+=(--disable-reporting)
 
 # Set cluster node name to real hostname
-HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
+HA_HOSTNAME=$(bashio::host.hostname 2>/dev/null || echo "homeassistant")
 args+=(--cluster.name="${HA_HOSTNAME}")
 
 # Export API key for basic_auth via sys.env()

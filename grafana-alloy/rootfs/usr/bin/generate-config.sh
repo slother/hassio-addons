@@ -25,7 +25,7 @@ readonly LOKI_URL=$(bashio::config 'loki_url')
 readonly LOKI_USERNAME=$(bashio::config 'loki_username')
 
 # Get real hostname from Supervisor API
-HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
+HA_HOSTNAME=$(bashio::host.hostname 2>/dev/null || echo "homeassistant")
 bashio::log.info "Host hostname: ${HA_HOSTNAME}"
 
 # --- Build Prometheus blocks ---
