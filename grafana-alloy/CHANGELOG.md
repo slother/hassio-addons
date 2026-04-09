@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Systemd journal log shipping to Loki (ported from ecohash/ha-addon-alloy)
+- Journal field relabeling: unit, hostname, syslog_identifier, transport, container_name, level
+- Grafana Cloud Loki support with basic_auth
+- Auto-detection of journal path (/var/log/journal or /run/log/journal)
+
 ## 0.3.0
 
 - Stripped down to Prometheus-only (removed Loki/Docker/journal)

@@ -21,6 +21,8 @@ bashio::log.info "Generating Alloy configuration from addon options..."
 readonly PROM_URL=$(bashio::config 'prometheus_url')
 readonly PROM_USERNAME=$(bashio::config 'prometheus_username')
 readonly SCRAPE_INTERVAL=$(bashio::config 'scrape_interval')
+readonly LOKI_URL=$(bashio::config 'loki_url')
+readonly LOKI_USERNAME=$(bashio::config 'loki_username')
 
 # Get real hostname from Supervisor API
 HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
@@ -92,10 +94,86 @@ prometheus.remote_write \"default\" {
 }"
 fi
 
+# --- Build Loki blocks ---
+LOKI_BLOCK=""
+if bashio::var.has_value "${LOKI_URL}"; then
+    # Detect journal path
+    JOURNAL_PATH="/var/log/journal"
+    if [ ! -d "${JOURNAL_PATH}" ] || [ -z "$(ls -A "${JOURNAL_PATH}" 2>/dev/null)" ]; then
+        JOURNAL_PATH="/run/log/journal"
+    fi
+    bashio::log.info "Journal path: ${JOURNAL_PATH}"
+
+    LOKI_AUTH=""
+    if bashio::var.has_value "${LOKI_USERNAME}"; then
+        LOKI_AUTH="
+    basic_auth {
+      username = \"${LOKI_USERNAME}\"
+      password = sys.env(\"GCLOUD_API_KEY\")
+    }"
+    fi
+
+    LOKI_BLOCK="
+// ---------------------------------------------------------------------------
+// Systemd journal log shipping
+// ---------------------------------------------------------------------------
+loki.source.journal \"journal\" {
+  path         = \"${JOURNAL_PATH}\"
+  forward_to   = [loki.process.journal.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  labels       = {
+    job = \"systemd-journal\",
+  }
+}
+
+loki.relabel \"journal\" {
+  forward_to = []
+
+  rule {
+    source_labels = [\"__journal__systemd_unit\"]
+    target_label  = \"unit\"
+  }
+  rule {
+    source_labels = [\"__journal__hostname\"]
+    target_label  = \"hostname\"
+  }
+  rule {
+    source_labels = [\"__journal_syslog_identifier\"]
+    target_label  = \"syslog_identifier\"
+  }
+  rule {
+    source_labels = [\"__journal__transport\"]
+    target_label  = \"transport\"
+  }
+  rule {
+    source_labels = [\"__journal_container_name\"]
+    target_label  = \"container_name\"
+  }
+  rule {
+    source_labels = [\"__journal_priority_keyword\"]
+    target_label  = \"level\"
+  }
+}
+
+loki.process \"journal\" {
+  stage.drop {
+    expression = \"^\\\\s*\\\$\"
+  }
+
+  forward_to = [loki.write.loki.receiver]
+}
+
+loki.write \"loki\" {
+  endpoint {
+    url = \"${LOKI_URL}\"${LOKI_AUTH}
+  }
+}"
+fi
+
 # --- Check endpoint is configured ---
-if ! bashio::var.has_value "${PROM_URL}"; then
+if ! bashio::var.has_value "${PROM_URL}" && ! bashio::var.has_value "${LOKI_URL}"; then
     bashio::log.warning \
-        "No Prometheus URL configured. Alloy will start but won't send data anywhere."
+        "No Prometheus or Loki URL configured. Alloy will start but won't send data anywhere."
 fi
 
 cat > "${CONFIG_FILE}" << EOF
@@ -106,6 +184,7 @@ logging {
   level = "${LOG_LEVEL}"
 }
 ${PROM_BLOCK}
+${LOKI_BLOCK}
 EOF
 
 bashio::log.info "Configuration generated successfully"

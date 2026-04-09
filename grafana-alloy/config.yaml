@@ -1,11 +1,11 @@
 ---
 name: Grafana Alloy
-version: 1.0.0
+version: 1.1.0
 slug: grafana-alloy
 description: >-
   Grafana Alloy telemetry collector for Home Assistant. Scrapes HA Prometheus
-  metrics and node/system metrics, then pushes to Grafana Cloud or any
-  Prometheus remote_write endpoint.
+  metrics and node/system metrics, ships systemd journal logs to Loki, and
+  pushes to Grafana Cloud or any compatible endpoint.
 url: https://github.com/slother/hassio-addons/tree/main/grafana-alloy
 arch:
   - aarch64
@@ -14,6 +14,8 @@ stage: experimental
 init: false
 startup: services
 boot: auto
+journald: true
+apparmor: false
 host_network: true
 hassio_api: true
 homeassistant_api: true
@@ -24,6 +26,8 @@ options:
   log_level: info
   prometheus_url: ""
   prometheus_username: ""
+  loki_url: ""
+  loki_username: ""
   gcloud_api_key: ""
   scrape_interval: "60s"
   custom_config_path: ""
@@ -31,6 +35,8 @@ schema:
   log_level: list(trace|debug|info|notice|warning|error|fatal)
   prometheus_url: url?
   prometheus_username: str?
+  loki_url: url?
+  loki_username: str?
   gcloud_api_key: password?
   scrape_interval: str?
   custom_config_path: str?
