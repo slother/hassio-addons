@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.13
+
+### Fixed
+- hardcode hostname to homeassistant
+
+
+
 ## 1.1.12
 
 ### Fixed
