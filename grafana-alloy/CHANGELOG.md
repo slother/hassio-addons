@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.12
+
+### Fixed
+- revert prometheus.relabel — broke node exporter metrics
+
+
+
 ## 1.1.11
 
 ### Fixed
