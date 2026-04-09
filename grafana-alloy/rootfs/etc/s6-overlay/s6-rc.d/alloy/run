@@ -10,6 +10,7 @@ args+=(run)
 args+=(/etc/alloy/config.alloy)
 args+=(--server.http.listen-addr=0.0.0.0:12345)
 args+=(--storage.path=/data/alloy)
+args+=(--disable-reporting)
 
 # Set cluster node name to real hostname
 HA_HOSTNAME=$(bashio::info.hostname 2>/dev/null || echo "homeassistant")
