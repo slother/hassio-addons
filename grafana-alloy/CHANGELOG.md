@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.9
+
+### Fixed
+- override instance label on metrics with real hostname
+
+
+
 ## 1.1.8
 
 ### Fixed
