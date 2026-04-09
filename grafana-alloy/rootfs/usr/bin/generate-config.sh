@@ -122,7 +122,7 @@ loki.source.journal \"journal\" {
   forward_to   = [loki.process.journal.receiver]
   relabel_rules = loki.relabel.journal.rules
   labels       = {
-    job      = \"systemd-journal\",
+    job      = \"integrations/node_exporter\",
     instance = \"${HA_HOSTNAME}\",
   }
 }
