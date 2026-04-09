@@ -57,7 +57,7 @@ prometheus.exporter.unix \"node\" {
 prometheus.scrape \"node\" {
   targets         = prometheus.exporter.unix.node.targets
   scrape_interval = \"${SCRAPE_INTERVAL}\"
-  forward_to      = [prometheus.relabel.instance.receiver]
+  forward_to      = [prometheus.remote_write.default.receiver]
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ prometheus.scrape \"homeassistant\" {
 
   bearer_token = sys.env(\"SUPERVISOR_TOKEN\")
 
-  forward_to = [prometheus.relabel.instance.receiver]
+  forward_to = [prometheus.remote_write.default.receiver]
 }
 
 // ---------------------------------------------------------------------------
@@ -84,17 +84,6 @@ prometheus.exporter.self \"alloy\" {}
 
 prometheus.scrape \"alloy\" {
   targets    = prometheus.exporter.self.alloy.targets
-  forward_to = [prometheus.relabel.instance.receiver]
-}
-
-// ---------------------------------------------------------------------------
-// Override instance label with real hostname
-// ---------------------------------------------------------------------------
-prometheus.relabel \"instance\" {
-  rule {
-    target_label = \"instance\"
-    replacement  = \"${HA_HOSTNAME}\"
-  }
   forward_to = [prometheus.remote_write.default.receiver]
 }
 
