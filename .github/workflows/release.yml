@@ -88,13 +88,59 @@ jobs:
         if: steps.bump.outputs.bump != 'none'
         run: |
           version="${{ steps.version.outputs.version }}"
+          latest_tag="${{ steps.latest_tag.outputs.tag }}"
+          changelog="webdav/CHANGELOG.md"
 
           # Update config.yaml version
           sed -i "s/^version: .*/version: ${version}/" webdav/config.yaml
 
+          # Generate changelog entry from conventional commits
+          breaking=""
+          added=""
+          fixed=""
+
+          if git rev-parse "${latest_tag}" >/dev/null 2>&1; then
+            log=$(git log "${latest_tag}..HEAD" --oneline -- webdav/)
+          else
+            log=$(git log --oneline -- webdav/)
+          fi
+
+          while IFS= read -r line; do
+            [ -z "${line}" ] && continue
+            msg="${line#* }"
+            if echo "${msg}" | grep -qE '^\w+!:'; then
+              desc="${msg#*: }"
+              breaking="${breaking}- ${desc}"$'\n'
+            elif echo "${msg}" | grep -qE '^feat(\(.+\))?:'; then
+              desc="${msg#*: }"
+              added="${added}- ${desc}"$'\n'
+            elif echo "${msg}" | grep -qE '^fix(\(.+\))?:'; then
+              desc="${msg#*: }"
+              fixed="${fixed}- ${desc}"$'\n'
+            fi
+          done <<< "${log}"
+
+          entry="## ${version}"$'\n'
+          [ -n "${breaking}" ] && entry="${entry}"$'\n'"### Breaking"$'\n'"${breaking}"
+          [ -n "${added}" ] && entry="${entry}"$'\n'"### Added"$'\n'"${added}"
+          [ -n "${fixed}" ] && entry="${entry}"$'\n'"### Fixed"$'\n'"${fixed}"
+
+          if [ -f "${changelog}" ]; then
+            existing=$(cat "${changelog}")
+            body="${existing#"# Changelog"}"
+            echo "# Changelog" > "${changelog}"
+            echo "" >> "${changelog}"
+            echo "${entry}" >> "${changelog}"
+            echo "${body}" >> "${changelog}"
+          else
+            echo "# Changelog" > "${changelog}"
+            echo "" >> "${changelog}"
+            echo "${entry}" >> "${changelog}"
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add webdav/config.yaml
+          git add webdav/config.yaml webdav/CHANGELOG.md
           git commit -m "chore: bump version to ${version}"
 
           # Push commit and tag separately
