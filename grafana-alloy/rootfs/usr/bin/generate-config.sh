@@ -95,6 +95,10 @@ prometheus.relabel \"instance\" {
     target_label = \"instance\"
     replacement  = \"${HA_HOSTNAME}\"
   }
+  rule {
+    target_label = \"job\"
+    replacement  = \"integrations/unix\"
+  }
   forward_to = [prometheus.remote_write.default.receiver]
 }
 
