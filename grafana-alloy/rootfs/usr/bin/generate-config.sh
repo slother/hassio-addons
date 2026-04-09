@@ -24,7 +24,7 @@ readonly SCRAPE_INTERVAL=$(bashio::config 'scrape_interval')
 readonly LOKI_URL=$(bashio::config 'loki_url')
 readonly LOKI_USERNAME=$(bashio::config 'loki_username')
 
-HA_HOSTNAME="homeassistant"
+HA_HOSTNAME=$(bashio::config 'instance_name')
 
 # --- Build Prometheus blocks ---
 PROM_BLOCK=""

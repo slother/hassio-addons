@@ -29,6 +29,7 @@ options:
   loki_url: ""
   loki_username: ""
   gcloud_api_key: ""
+  instance_name: homeassistant
   scrape_interval: "60s"
   custom_config_path: ""
 schema:
@@ -38,6 +39,7 @@ schema:
   loki_url: url?
   loki_username: str?
   gcloud_api_key: password?
+  instance_name: str?
   scrape_interval: str?
   custom_config_path: str?
 ports:

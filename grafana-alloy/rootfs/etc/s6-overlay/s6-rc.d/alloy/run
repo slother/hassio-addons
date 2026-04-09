@@ -12,7 +12,8 @@ args+=(--server.http.listen-addr=0.0.0.0:12345)
 args+=(--storage.path=/data/alloy)
 args+=(--disable-reporting)
 
-args+=(--cluster.name="homeassistant")
+HA_HOSTNAME=$(bashio::config 'instance_name')
+args+=(--cluster.name="${HA_HOSTNAME}")
 
 # Export API key for basic_auth via sys.env()
 if bashio::config.has_value 'gcloud_api_key'; then
