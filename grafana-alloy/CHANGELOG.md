@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.10
+
+### Fixed
+- set job=integrations/unix on all metrics for dashboard compatibility
+
+
+
 ## 1.1.9
 
 ### Fixed
