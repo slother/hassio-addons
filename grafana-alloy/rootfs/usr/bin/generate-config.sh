@@ -157,7 +157,7 @@ loki.relabel \"journal\" {
 
 loki.process \"journal\" {
   stage.drop {
-    expression = \"^\\\\s*\\\$\"
+    expression = \"^\\s*\$\"
   }
 
   forward_to = [loki.write.loki.receiver]
