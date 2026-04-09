@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.8
+
+### Fixed
+- get hostname directly from Supervisor /host/info API
+
+
+
 ## 1.1.0
 
 - Systemd journal log shipping to Loki (ported from ecohash/ha-addon-alloy)
