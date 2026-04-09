@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+### Added
+- add instance_name config option (default: homeassistant)
+
+
+
 ## 1.1.13
 
 ### Fixed
