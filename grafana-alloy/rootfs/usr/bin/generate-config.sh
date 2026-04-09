@@ -24,15 +24,7 @@ readonly SCRAPE_INTERVAL=$(bashio::config 'scrape_interval')
 readonly LOKI_URL=$(bashio::config 'loki_url')
 readonly LOKI_USERNAME=$(bashio::config 'loki_username')
 
-# Get real hostname from Supervisor API
-HA_HOSTNAME=$(curl -sSf -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-    http://supervisor/host/info 2>/dev/null | jq -r '.data.hostname // empty') \
-    || true
-if [ -z "${HA_HOSTNAME}" ]; then
-    HA_HOSTNAME=$(bashio::host.hostname 2>/dev/null) || true
-fi
-HA_HOSTNAME="${HA_HOSTNAME:-homeassistant}"
-bashio::log.info "Host hostname: ${HA_HOSTNAME}"
+HA_HOSTNAME="homeassistant"
 
 # --- Build Prometheus blocks ---
 PROM_BLOCK=""
