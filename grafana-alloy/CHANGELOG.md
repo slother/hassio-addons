@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.11
+
+### Fixed
+- revert job relabel — broke node exporter metrics
+
+
+
 ## 1.1.10
 
 ### Fixed
